@@ -17,7 +17,7 @@ jobs:
           - { os: linux, arch: amd64 }
           - { os: linux, arch: arm64 }
           - { os: darwin, arch: arm64 }
-          - { os: windows, arch: amd64 }
+          # windows: not supported yet — single-flight locking uses syscall.Flock (Unix-only)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

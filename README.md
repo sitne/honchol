@@ -104,6 +104,7 @@ deployment notes, not a benchmark.
 - No semantic/embedding tier yet (deliberate — the judge re-ranker covers the common cases).
 - No authentication: the server is meant to run loopback-only next to its client.
 - Single-user scale: the derive pipeline is one pass every 15 minutes, not a multi-tenant worker fleet.
+- Linux/macOS builds for now (single-flight locking uses flock; on Windows, use WSL).
 
 ## License
 
