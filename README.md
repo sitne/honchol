@@ -1,5 +1,7 @@
 # honchol
 
+**English** | [日本語](README.ja.md)
+
 **A lightweight, self-hosted, Honcho-compatible memory server — one Go binary + one SQLite file.**
 
 honchol implements a practical subset of the [Honcho](https://github.com/plastic-labs/honcho) v3 HTTP API,
