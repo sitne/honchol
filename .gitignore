@@ -1,0 +1,20 @@
+# binaries
+honchol
+server/honchol
+dist/
+
+# local databases
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# local env
+.env
+
+# python caches
+__pycache__/
+*.pyc
+
+# editor
+*.swp

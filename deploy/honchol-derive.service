@@ -1,0 +1,14 @@
+[Unit]
+Description=honchol derive (process unprocessed messages into conclusions)
+After=honchol-serve.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/honchol/server
+ExecStart=/opt/honchol/deploy/run_derive.sh
+Nice=10
+# Derivation includes LLM round-trips; the default 90s timeout can SIGTERM it mid-run.
+TimeoutStartSec=1800
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077

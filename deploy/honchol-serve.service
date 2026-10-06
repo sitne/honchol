@@ -1,0 +1,18 @@
+[Unit]
+Description=honchol serve (lightweight Honcho-compatible memory backend)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/honchol/server
+ExecStart=/opt/honchol/deploy/run_serve.sh
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

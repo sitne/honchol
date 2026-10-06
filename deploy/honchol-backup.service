@@ -1,0 +1,11 @@
+[Unit]
+Description=honchol daily backup
+
+[Service]
+Type=oneshot
+ExecStart=/opt/honchol/deploy/backup.sh
+Nice=15
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+UMask=0077
