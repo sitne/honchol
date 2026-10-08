@@ -35,8 +35,8 @@ Note: `8788` is the binary's built-in default address; the examples in this repo
 - cards: get/put
 - sessions: create/get/update/delete/list, peer sessions, session peers config
 - messages: add (bare-array response), list (page shape), session context (token budget)
-- search: workspace / session / peer — FTS5 candidates + judge re-ranking; thin results
-  retry once with LLM keyword expansion
+- search: workspace / session / peer — FTS5 candidates (+ optional embedding arm, RRF-fused in
+  v0.3) + judge re-ranking; thin results retry once with LLM keyword expansion
 - conclusions: create / list / query / delete
 - queue/status: processed-message aggregation
 - chat / dialectic: cloud-LLM synthesis over card + related conclusions + related messages → `{content}`
@@ -50,15 +50,17 @@ Note: `8788` is the binary's built-in default address; the examples in this repo
 
 ## Judge client
 
-Judgments (choice / noul / score) are delegated to a judge endpoint, in one of two wire formats:
+Judgments (choice / noul / score) are delegated to a judge endpoint, in one of three wire formats:
 
 - `clef` — Cloudflare Workers AI envelope (`{"success":true,"result":{"answers":{...}}}`). Default model `clef-flash`.
 - `sysone` — plain `{"answers":{...}}`, no auth (any local judgment shim).
+- `mbja` — experimental: `POST {"query","texts"} → {"scores":[float]}` from a local ONNX scorer
+  (`../sidecar/mbja_judge_server.py`). Not a replacement for the defaults — see the header note there.
 
 Env (secrets are referenced by variable *name*):
 
     HONCHO_LITE_JUDGE_URL          (required to enable) full endpoint URL
-    HONCHO_LITE_JUDGE_KIND         clef (default) | sysone
+    HONCHO_LITE_JUDGE_KIND         clef (default) | sysone | mbja
     HONCHO_LITE_JUDGE_MODEL        clef-flash (default; sent only for kind=clef)
     HONCHO_LITE_JUDGE_KEY_ENV      CLOUDFLARE_API_TOKEN (default; empty string = no auth)
     HONCHO_LITE_JUDGE_TIMEOUT_MS   20000 (default)
@@ -84,6 +86,25 @@ Check both primary and fallback with:
     HONCHO_LITE_SEARCH_JUDGE_TIMEOUT_MS 15000 (judge timeout during search re-ranking)
     HONCHO_LITE_MAX_BODY_BYTES         4194304 (4 MiB request-body cap)
     HONCHO_LITE_FTS_REBUILD            0 skips the FTS rebuild at startup
+
+## Hybrid retrieval (v0.3)
+
+    HONCHO_LITE_EMBED_PROVIDER    none (default) | local (sidecar) | api (OpenAI-compatible /embeddings)
+    HONCHO_LITE_EMBED_URL         e.g. http://127.0.0.1:8793/embed (local) or https://<api>/embeddings (api)
+    HONCHO_LITE_EMBED_DIM         required for provider=api (local takes the sidecar-reported dim)
+    HONCHO_LITE_EMBED_TIMEOUT_MS  5000
+    HONCHO_LITE_FUSE              1 enables RRF fusion of the FTS + embedding arms (default 0)
+    HONCHO_LITE_TRANSLATE_PROVIDER none (default) | local — JA→EN query translation before the embedding arm
+    HONCHO_LITE_TRANSLATE_URL     http://127.0.0.1:8793/translate (default)
+    HONCHO_LITE_TRANSLATE_TIMEOUT_MS 2500
+    HONCHO_LITE_QUERY_DEADLINE_MS 10000 (overall deadline for one ranked search)
+
+Backfill vectors for existing rows (resumable, single-flight):
+
+    ./honchol embed-backfill -db honchol.db -batch 256
+
+The embedding tier is served by `../sidecar/model_sidecar.py` (bekko ONNX embeddings + LFM2-350M
+translation). Everything is fail-open: no sidecar, or `EMBED_PROVIDER=none` → literal tier only.
 
 ## Derive pipeline
 

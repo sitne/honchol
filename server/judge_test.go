@@ -53,7 +53,7 @@ func TestSysoneEnvelopeNoAuth(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
-		_, _ = io.WriteString(w, `{"model":"shim-a","answers":{"q":{"noul":0.5}},"usage":{}}`)
+		_, _ = io.WriteString(w, `{"model":"shim-x","answers":{"q":{"noul":0.5}},"usage":{}}`)
 	}))
 	defer srv.Close()
 	c := NewJudgeClient(JudgeConfig{Kind: "sysone", URL: srv.URL, Timeout: 5 * time.Second})
@@ -64,7 +64,7 @@ func TestSysoneEnvelopeNoAuth(t *testing.T) {
 	if gotAuth != "" {
 		t.Fatalf("auth should be empty, got %q", gotAuth)
 	}
-	if meta != "shim-a" {
+	if meta != "shim-x" {
 		t.Fatalf("meta = %q", meta)
 	}
 	if res["q"].Noul == nil || *res["q"].Noul != 0.5 {
@@ -79,7 +79,7 @@ func TestFallbackOnPrimaryError(t *testing.T) {
 	}))
 	defer primary.Close()
 	fb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"model":"shim-b","answers":{"q":{"noul":0.7}}}`)
+		_, _ = io.WriteString(w, `{"model":"shim-fb","answers":{"q":{"noul":0.7}}}`)
 	}))
 	defer fb.Close()
 

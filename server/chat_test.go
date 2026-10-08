@@ -13,7 +13,7 @@ import (
 func TestChatEndpoint(t *testing.T) {
 	st := testStore(t)
 	ws := "w"
-	if err := st.SetCard(ws, "agent", "alice", []string{"sitneは較正研究をしている"}); err != nil {
+	if err := st.SetCard(ws, "agent", "alice", []string{"aliceは較正研究をしている"}); err != nil {
 		t.Fatal(err)
 	}
 	llmSrv := fakeLLMServer(t)

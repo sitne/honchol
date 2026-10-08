@@ -44,7 +44,59 @@ func judgeSearchTimeout() time.Duration {
 }
 
 // judgeRelevance — 候補テキスト群を1コールで3値判定し tier を返す（欠落・不明は弱関連=保持）。
+// kind=mbja のときは mbja スコア経路（失敗時は fallback の古典封筒へ）。
 func judgeRelevance(ctx context.Context, jc *JudgeClient, query string, texts []string) ([]int, string, error) {
+	if jc.cfg.Kind == "mbja" {
+		tiers, meta, err := judgeRelevanceMbja(ctx, jc, query, texts)
+		if err == nil {
+			return tiers, meta, nil
+		}
+		log.Printf("search(concl): judge mbja failed (%v)", err)
+		if jc.fb == nil {
+			return nil, meta, err
+		}
+		log.Printf("search(concl): judge fallback -> classic envelope (%s)", jMaskURL(jc.fb.cfg.URL))
+		return judgeRelevanceClassic(ctx, jc.fb, query, texts)
+	}
+	return judgeRelevanceClassic(ctx, jc, query, texts)
+}
+
+// judgeRelevanceMbja — mbja の P(relevant) を閾値で tier 化し、分布をログ（閾値較正用）。
+// 閾値: HONCHO_LITE_MBJA_T_REL（既定0.5）/ HONCHO_LITE_MBJA_T_WEAK（既定0.1）。
+func judgeRelevanceMbja(ctx context.Context, jc *JudgeClient, query string, texts []string) ([]int, string, error) {
+	scores, meta, err := jc.AskMbja(ctx, query, texts)
+	if err != nil {
+		return nil, meta, err
+	}
+	tRel := envFloat("HONCHO_LITE_MBJA_T_REL", 0.5)
+	tWeak := envFloat("HONCHO_LITE_MBJA_T_WEAK", 0.1)
+	tiers := make([]int, len(scores))
+	rel, weak := 0, 0
+	lo, hi := 1.0, 0.0
+	for i, s := range scores {
+		if s < lo {
+			lo = s
+		}
+		if s > hi {
+			hi = s
+		}
+		switch {
+		case s >= tRel:
+			tiers[i] = tierRelated
+			rel++
+		case s >= tWeak:
+			tiers[i] = tierWeak
+			weak++
+		default:
+			tiers[i] = tierUnrelated
+		}
+	}
+	log.Printf("search(concl): judge mbja n=%d scores[%.3f..%.3f] rel=%d weak=%d (T=%.2f/%.2f)", len(scores), lo, hi, rel, weak, tRel, tWeak)
+	return tiers, meta, nil
+}
+
+// judgeRelevanceClassic — 従来の clef/sysone 封筒（ChoiceQ）経路。
+func judgeRelevanceClassic(ctx context.Context, jc *JudgeClient, query string, texts []string) ([]int, string, error) {
 	questions := make(map[string]map[string]any, len(texts))
 	for i, t := range texts {
 		instr := "次の記述は、検索クエリに対する手がかりとしてどの程度関連しているか。「" + truncRunes(cleanForPrompt(t), 350) + "」"
@@ -228,6 +280,18 @@ func mergeConclusionRows(a, b []conclusionRow) []conclusionRow {
 // rankedSearchConclusions — 結論の二段検索（候補FTS/LIKE → judge関連判定）。
 // 判定失敗時は素順序へフォールバック（fail-open）。全件無関係なら空。
 func (a *apiServer) rankedSearchConclusions(ctx context.Context, ws, observer, target, query string, limit int) []conclusionRow {
+	// 全体デッドライン（perfレビュー対応）: 段の直列合計が伸びても上限で打切り、fail-soft で部分結果を返す
+	if _, has := ctx.Deadline(); !has {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(envInt("HONCHO_LITE_QUERY_DEADLINE_MS", 10000))*time.Millisecond)
+		defer cancel()
+	}
+	// v0.3b: RRF 融合経路（HONCHO_LITE_FUSE=1 かつ embed provider 有効時）
+	if a.fuse && a.ep != nil && a.ep.Enabled() {
+		if out, ok := a.rankedSearchConclusionsFused(ctx, ws, observer, target, query, limit); ok {
+			return out
+		}
+	}
 	candN := limit * 2
 	if candN < 20 {
 		candN = 20

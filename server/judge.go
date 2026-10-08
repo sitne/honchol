@@ -331,6 +331,75 @@ func jMaskURL(u string) string {
 	return reAcct.ReplaceAllString(u, "${1}…${3}")
 }
 
+// ---- v0.3d: mbja judge (kind=mbja) ----
+
+// AskMbja — 検索judge: mbja（ModernBERT-Ja+GLiClass・サイドカー）に query×texts の関連度を問い合わせる。
+// HTTP契約: POST {"query": "...", "texts": ["..."]} → {"scores": [float...], "model": "..."}
+// scores[i] = P(relevant | query, texts[i])。件数不一致はエラー。
+func (c *JudgeClient) AskMbja(ctx context.Context, query string, texts []string) ([]float64, string, error) {
+	// 古典経路と同一基準の切詰め（ペイロード肥大防止・セキュリティレビュー対応）
+	ts := make([]string, len(texts))
+	for i, t := range texts {
+		ts[i] = truncRunes(cleanForPrompt(t), 500)
+	}
+	body := map[string]any{"query": truncRunes(cleanForPrompt(query), 300), "texts": ts}
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.URL, bytes.NewReader(buf))
+	if err != nil {
+		return nil, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "honchol/"+version)
+	if c.key != "" {
+		req.Header.Set("Authorization", "Bearer "+c.key)
+	}
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("http: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return nil, "", fmt.Errorf("read: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("http %d: %.300s", resp.StatusCode, string(raw))
+	}
+	var out struct {
+		Scores []float64 `json:"scores"`
+		Model  string    `json:"model"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, "", fmt.Errorf("bad json: %.200s", string(raw))
+	}
+	if len(out.Scores) != len(texts) {
+		return nil, "", fmt.Errorf("mbja: scores %d != texts %d", len(out.Scores), len(texts))
+	}
+	for i, s := range out.Scores {
+		if s != s || s > 1e9 || s < -1e9 { // NaN / ±Inf / 異常値（math 非依存の検査）
+			return nil, "", fmt.Errorf("mbja: non-finite score[%d]", i)
+		}
+	}
+	name := out.Model
+	if name == "" {
+		name = "mbja"
+	}
+	return out.Scores, name, nil
+}
+
+// envFloat — 環境変数の float（未設定・不正は既定値）。
+func envFloat(name string, def float64) float64 {
+	if s := os.Getenv(name); s != "" {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return f
+		}
+	}
+	return def
+}
+
 // runJudgeCheck — doctor -judge 用の疎通確認（P2 judge クライアントの実地検証）
 func runJudgeCheck() {
 	cfg, err := JudgeConfigFromEnv()

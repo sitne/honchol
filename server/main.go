@@ -11,6 +11,7 @@
 //	derive  [-db path] [-session ID] [-requeue-dead]  run one derivation pass
 //	import  -src export.db [-ws id] [-db path]        bulk import from an export db
 //	fts-rebuild [-db path]                            rebuild FTS5 indexes
+//	embed-backfill [-db path] [-batch N] [-limit N]   backfill conclusion embeddings (needs HONCHO_LITE_EMBED_*)
 package main
 
 import (
@@ -27,7 +28,10 @@ import (
 	"time"
 )
 
-var version = "0.1.0"
+// version is a var (not const) so release builds can override it:
+//
+//	go build -ldflags "-X main.version=0.3.1"
+var version = "0.3.1"
 
 var usage = `honchol — lightweight Honcho-compatible memory server ` + version + `
 
@@ -39,6 +43,8 @@ commands:
   derive  -db honchol.db [-session ID] [-requeue-dead]
                                                 run one derive pass; -requeue-dead resets dead-letters
   fts-rebuild -db honchol.db                    rebuild FTS5 indexes from content tables
+  embed-backfill -db honchol.db [-batch 256] [-limit N]
+                                                embed missing conclusion vectors (needs HONCHO_LITE_EMBED_*)
   import  -src export.db [-ws id] [-db path]    bulk import from an export database
 `
 
@@ -58,6 +64,8 @@ func main() {
 		cmdFTSRebuild(os.Args[2:])
 	case "import":
 		cmdImport(os.Args[2:])
+	case "embed-backfill":
+		cmdEmbedBackfill(os.Args[2:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 	default:
@@ -79,6 +87,15 @@ func cmdServe(args []string) {
 	defer st.Close()
 
 	srv := &apiServer{st: st}
+	srv.ep = NewEmbeddingProvider(EmbeddingConfigFromEnv())
+	srv.fuse = srv.ep.Enabled() && envOr("HONCHO_LITE_FUSE", "0") == "1"
+	if srv.ep.Enabled() {
+		log.Printf("embedding arm: provider=%s dim=%d fuse=%v", srv.ep.Kind(), srv.ep.Dim(), srv.fuse)
+	}
+	srv.tp = newTranslateProviderFromEnv()
+	if srv.tp.Enabled() {
+		log.Printf("translate: provider=%s -> %s", srv.tp.Kind(), srv.tp.cfg.url)
+	}
 	if cfg, err := JudgeConfigFromEnv(); err == nil {
 		srv.jc = NewJudgeClient(*cfg)
 		fb := ""
@@ -178,7 +195,7 @@ func cmdDoctor(args []string) {
 		log.Fatalf("counts: %v", err)
 	}
 	fmt.Printf("honchol doctor: db=%s ok\n", *dbPath)
-	for _, k := range []string{"workspaces", "peers", "sessions", "session_peers", "messages", "conclusions", "cards"} {
+	for _, k := range []string{"workspaces", "peers", "sessions", "session_peers", "messages", "conclusions", "cards", "vectors"} {
 		fmt.Printf("  %-14s %d\n", k+":", counts[k])
 	}
 	if *judge {
@@ -260,6 +277,17 @@ func cmdDerive(args []string) {
 	rec, _ := json.Marshal(map[string]any{"at": nowISO(), "stats": stats})
 	if err := st.SetMeta("last_derive", string(rec)); err != nil {
 		log.Printf("derive: set meta: %v", err)
+	}
+	// v0.3a: 新規結論の埋め込み（provider=none の既定では no-op・fail-soft）
+	if p := NewEmbeddingProvider(EmbeddingConfigFromEnv()); p.Enabled() {
+		ectx, ecancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		edone, eerr := embedMissingConclusions(ectx, st, p, 128, 0, nil)
+		ecancel()
+		if eerr != nil {
+			log.Printf("derive: embed-backfill soft error after %d: %v", edone, eerr)
+		} else if edone > 0 {
+			log.Printf("derive: embed-backfill +%d vectors", edone)
+		}
 	}
 	fmt.Println(string(blob))
 }

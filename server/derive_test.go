@@ -32,9 +32,9 @@ func fakeLLMServer(t *testing.T) *httptest.Server {
 		switch {
 		case strings.Contains(sys, "抽出器"):
 			content = `{"observations":[` +
-				`{"text":"sitneは較正の研究をしている","kind":"explicit","sources":[1]},` +
+				`{"text":"aliceは較正の研究をしている","kind":"explicit","sources":[1]},` +
 				`{"text":"温度スケーリング実験は中止になった","kind":"inductive","sources":[3]},` +
-				`{"text":"sitneは較正データの取扱いに注意深い","kind":"explicit","sources":[4]}]}`
+				`{"text":"aliceは較正データの取扱いに注意深い","kind":"explicit","sources":[4]}]}`
 		case strings.Contains(sys, "要約器"):
 			content = "テスト会話の要約です。較正研究と実験中止の経緯が含まれる。"
 		case strings.Contains(sys, "保守器"):
@@ -108,9 +108,9 @@ func TestDerivePipeline(t *testing.T) {
 	_ = m1
 	add("agent", "了解です")
 	add("alice", "温度スケーリング実験は中止になった")
-	add("alice", "sitneは較正データの取扱いに注意深い")
+	add("alice", "aliceは較正データの取扱いに注意深い")
 
-	if err := st.AddDerivedConclusion(ws, "agent", "alice", "sitneは較正の研究をしている", "explicit", nil, sid); err != nil {
+	if err := st.AddDerivedConclusion(ws, "agent", "alice", "aliceは較正の研究をしている", "explicit", nil, sid); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.AddDerivedConclusion(ws, "agent", "alice", "温度スケーリング実験は来週実施する", "explicit", nil, sid); err != nil {
@@ -153,7 +153,7 @@ func TestDerivePipeline(t *testing.T) {
 		switch {
 		case r.Level == "contradiction":
 			contra = r.ID
-		case r.Content == "sitneは較正の研究をしている":
+		case r.Content == "aliceは較正の研究をしている":
 			c0 = r.ID
 		}
 	}

@@ -131,6 +131,21 @@ CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS vectors (
+  item_type TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  dim INTEGER NOT NULL,
+  vec BLOB NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (item_type, item_id)
+);
+CREATE TABLE IF NOT EXISTS translate_cache (
+  src_hash TEXT PRIMARY KEY,
+  src TEXT NOT NULL,
+  dst TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 `
 
 type Store struct {
@@ -305,9 +320,9 @@ func (s *Store) DeleteSession(ws, id string) error {
 	// conclusions は session_id スコープのもののみ（他セッション由来の結論は残す）。
 	for _, q := range []string{
 		`DELETE FROM messages WHERE workspace_id=? AND session_id=?`,
-		`DELETE FROM session_peers WHERE workspace_id=? AND session_id=?`,
 		`DELETE FROM summaries WHERE workspace_id=? AND session_id=?`,
 		`DELETE FROM conclusions WHERE workspace_id=? AND session_id=?`,
+		`DELETE FROM session_peers WHERE workspace_id=? AND session_id=?`,
 		`DELETE FROM sessions WHERE workspace_id=? AND id=?`,
 	} {
 		if _, err := tx.Exec(q, ws, id); err != nil {
@@ -711,7 +726,7 @@ func (s *Store) SetCard(ws, observer, target string, card []string) error {
 
 func (s *Store) Counts() (map[string]int64, error) {
 	out := map[string]int64{}
-	for _, t := range []string{"workspaces", "peers", "sessions", "session_peers", "messages", "conclusions", "cards"} {
+	for _, t := range []string{"workspaces", "peers", "sessions", "session_peers", "messages", "conclusions", "cards", "vectors", "translate_cache"} {
 		var n int64
 		if err := s.db.QueryRow(`SELECT COUNT(*) FROM ` + t).Scan(&n); err != nil {
 			return nil, err

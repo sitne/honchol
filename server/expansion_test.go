@@ -10,7 +10,7 @@ import (
 // TestQueryExpansion — 長文クエリで直接候補ゼロ → LLM展開 → 再検索でヒットする（spec §3.3.1）。
 func TestQueryExpansion(t *testing.T) {
 	st := testStore(t)
-	if err := st.AddDerivedConclusion("w", "agent", "alice", "sitneは較正の研究をしている", "explicit", nil, ""); err != nil {
+	if err := st.AddDerivedConclusion("w", "agent", "alice", "aliceは較正の研究をしている", "explicit", nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	llmSrv := fakeLLMServer(t)
@@ -21,7 +21,7 @@ func TestQueryExpansion(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("expansion path did not find the conclusion")
 	}
-	if rows[0].Content != "sitneは較正の研究をしている" {
+	if rows[0].Content != "aliceは較正の研究をしている" {
 		t.Fatalf("rows = %+v", rows)
 	}
 }

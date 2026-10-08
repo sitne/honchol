@@ -18,6 +18,11 @@ type apiServer struct {
 	st  *Store
 	jc  *JudgeClient // 判断（検索再ランク・derive）— 未設定なら nil
 	llm *LLMClient   // 生成（抽出・要約・chat）— 未設定なら nil
+
+	ep   *EmbeddingProvider // v0.3b: embedding アーム（nil = 無効）
+	fuse bool               // v0.3b: RRF 融合（FTS/embedding 2アーム）有効
+	vc   vecCache           // v0.3b: vectors 全件キャッシュ
+	tp   *translateProvider // v0.3c: クエリ翻訳段（nil = 無効）
 }
 
 func (a *apiServer) routes() http.Handler {
