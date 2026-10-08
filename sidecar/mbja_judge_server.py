@@ -170,6 +170,9 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001
             self._send(400, {"error": f"bad json: {e}"})
             return
+        if not isinstance(req, dict):
+            self._send(400, {"error": "body must be a JSON object"})
+            return
         q = req.get("query") or ""
         texts = req.get("texts") or []
         if not isinstance(q, str) or len(q) > MAX_QUERY_CHARS:

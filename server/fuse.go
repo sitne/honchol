@@ -18,18 +18,20 @@ type vecCache struct {
 	mu       sync.Mutex
 	rows     []VectorRow
 	count    int64
+	stamp    int64
 	loadedAt time.Time
 }
 
-// cachedVectors — vectors 全件キャッシュ（件数が変わったら再ロード）。
+// cachedVectors — vectors 全件キャッシュ（件数+max rowid が変わったら再ロード。
+// rowid も見るのは「件数不変の再埋め込み」を検知するため — レビュー指摘）。
 func (a *apiServer) cachedVectors() ([]VectorRow, error) {
-	n, err := a.st.VectorCount("conclusion")
+	n, stamp, err := a.st.VectorsAgg("conclusion")
 	if err != nil {
 		return nil, err
 	}
 	a.vc.mu.Lock()
 	defer a.vc.mu.Unlock()
-	if a.vc.rows != nil && a.vc.count == n {
+	if a.vc.rows != nil && a.vc.count == n && a.vc.stamp == stamp {
 		return a.vc.rows, nil
 	}
 	rows, err := a.st.LoadVectors("conclusion")
@@ -38,6 +40,7 @@ func (a *apiServer) cachedVectors() ([]VectorRow, error) {
 	}
 	a.vc.rows = rows
 	a.vc.count = n
+	a.vc.stamp = stamp
 	a.vc.loadedAt = time.Now()
 	log.Printf("fuse: loaded %d conclusion vectors", len(rows))
 	return rows, nil

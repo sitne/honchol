@@ -85,17 +85,18 @@ systemd デプロイ（serve + deriveタイマー + バックアップ）は [`d
 | `HONCHO_LITE_LLM_KEY_ENV` | `OPENCODE_GO_API_KEY` | APIキーを保持するenv変数の「名前」 |
 | `HONCHO_LITE_LLM_SESSION` | `honcho-lite` | 一部ゲートウェイが要求する固定セッションヘッダ |
 | `HONCHO_LITE_JUDGE_URL` | — | judgeエンドポイント（clef封筒 or sysone素形） |
-| `HONCHO_LITE_JUDGE_KIND` | `clef` | `clef` \| `sysone` |
+| `HONCHO_LITE_JUDGE_KIND` | `clef` | `clef` \| `sysone` \| `mbja`（実験） |
 | `HONCHO_LITE_JUDGE_MODEL` | `clef-flash` | `kind=clef` のときのみ送信 |
 | `HONCHO_LITE_JUDGE_KEY_ENV` | `CLOUDFLARE_API_TOKEN` | キーenv名。空文字=認証なし |
 | `HONCHO_LITE_JUDGE_FALLBACK_URL` | — | primary judge 失敗時に試行 |
 | `HONCHO_LITE_SEARCH_JUDGE` / `_EXPAND` / `_CANDIDATE_CAP` | on / on / 40 | 二段検索の調整 |
 | `HONCHO_LITE_EMBED_PROVIDER` | `none` | `none` \| `local`（サイドカー）\| `api` — 埋め込みアームを有効化 |
-| `HONCHO_LITE_EMBED_URL` / `_DIM` / `_TIMEOUT_MS` | — / — / 5000 | `/embed` エンドポイント設定 |
+| `HONCHO_LITE_EMBED_URL` / `_DIM` / `_TIMEOUT_MS` | `http://127.0.0.1:8793/embed` / `384` / 5000 | `/embed` エンドポイント設定 |
+| `HONCHO_LITE_EMBED_API_BASE` / `_API_MODEL` / `_API_KEY_ENV` | — / `text-embedding-3-small` / `HONCHO_LITE_EMBED_API_KEY` | provider=`api`: base URL / モデル / キーenv名 |
 | `HONCHO_LITE_FUSE` | `0` | `1` = FTS + 埋め込み両アームの RRF 融合 |
 | `HONCHO_LITE_TRANSLATE_PROVIDER` | `none` | `none` \| `local` — 埋め込み前の JA→EN クエリ翻訳 |
-| `HONCHO_LITE_TRANSLATE_URL` / `_TIMEOUT_MS` | — / 2500 | 翻訳ステージの設定 |
-| `HONCHO_LITE_QUERY_DEADLINE_MS` | 10000 | 検索1回の全体デッドライン |
+| `HONCHO_LITE_TRANSLATE_URL` / `_TIMEOUT_MS` | `http://127.0.0.1:8793/translate` / 2500 | 翻訳ステージの設定 |
+| `HONCHO_LITE_QUERY_DEADLINE_MS` | 15000 | 検索1回の全体デッドライン |
 | `HONCHO_LITE_DERIVE_*` | `server/README.md` 参照 | 派生パイプラインの調整 |
 | `HONCHO_LITE_*_TIMEOUT_MS`（LLM / judge / search） | 90000 / 20000 / 15000 | 呼び出しタイムアウト |
 | `HONCHO_LITE_MAX_BODY_BYTES` | 4194304 (4 MiB) | リクエストボディ上限 |

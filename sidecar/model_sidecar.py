@@ -48,6 +48,8 @@ MAX_BODY = int(os.environ.get("SIDECAR_MAX_BODY_BYTES", str(8 << 20)))
 EMBED_THREADS = int(os.environ.get("SIDECAR_EMBED_THREADS", "2"))
 MAX_EMBED_CHARS = int(os.environ.get("SIDECAR_MAX_TEXT_CHARS", "20000"))
 MAX_TRANSLATE_CHARS = int(os.environ.get("SIDECAR_MAX_TRANSLATE_CHARS", "2000"))
+# 1リクエスト全体の文字数上限（件数×単件上限の積による計算増幅を防ぐ — レビュー指摘）
+MAX_TOTAL_CHARS = int(os.environ.get("SIDECAR_MAX_TOTAL_CHARS", str(200 * 1000)))
 TRANSLATE_MAX_NEW_CAP = int(os.environ.get("SIDECAR_TRANSLATE_MAX_NEW_CAP", "128"))
 MAX_CONCURRENCY = int(os.environ.get("SIDECAR_MAX_CONCURRENCY", "8"))
 
@@ -193,6 +195,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        if getattr(self, "close_connection", False):
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
@@ -205,7 +209,9 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             n = 0
         if n <= 0 or n > MAX_BODY:
-            self._send(400, {"error": "bad content-length"})
+            # ボディを読まずに返す場合は接続を閉じる（HTTP/1.1 keep-alive のデシンク防止）
+            self.close_connection = True
+            self._send(413 if n > MAX_BODY else 400, {"error": "bad content-length"})
             return None
         try:
             return json.loads(self.rfile.read(n))
@@ -276,6 +282,9 @@ class Handler(BaseHTTPRequestHandler):
         payload = self._read_json()
         if payload is None:
             return
+        if not isinstance(payload, dict):
+            self._send(400, {"error": "body must be a JSON object"})
+            return
         texts = payload.get("texts")
         if (
             not isinstance(texts, list)
@@ -285,6 +294,10 @@ class Handler(BaseHTTPRequestHandler):
             or max(len(t) for t in texts) > MAX_EMBED_CHARS
         ):
             self._send(400, {"error": "texts must be a non-empty list of strings (<= %d, each <= %d chars)" % (MAX_TEXTS, MAX_EMBED_CHARS)})
+            return
+        total = sum(len(t) for t in texts)
+        if total > MAX_TOTAL_CHARS:
+            self._send(400, {"error": "total text length must be <= %d chars (got %d)" % (MAX_TOTAL_CHARS, total)})
             return
         t0 = time.time()
         try:
@@ -305,6 +318,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         payload = self._read_json()
         if payload is None:
+            return
+        if not isinstance(payload, dict):
+            self._send(400, {"error": "body must be a JSON object"})
             return
         texts = payload.get("texts")
         if (

@@ -88,17 +88,18 @@ server picks it up via `HONCHO_LITE_EMBED_PROVIDER=local` + `HONCHO_LITE_FUSE=1`
 | `HONCHO_LITE_LLM_KEY_ENV` | `OPENCODE_GO_API_KEY` | name of the env var holding the API key |
 | `HONCHO_LITE_LLM_SESSION` | `honcho-lite` | stable session header (some gateways require one) |
 | `HONCHO_LITE_JUDGE_URL` | — | judge endpoint (clef envelope or sysone plain) |
-| `HONCHO_LITE_JUDGE_KIND` | `clef` | `clef` \| `sysone` |
+| `HONCHO_LITE_JUDGE_KIND` | `clef` | `clef` \| `sysone` \| `mbja` (experimental) |
 | `HONCHO_LITE_JUDGE_MODEL` | `clef-flash` | sent only when `kind=clef` |
 | `HONCHO_LITE_JUDGE_KEY_ENV` | `CLOUDFLARE_API_TOKEN` | key env name; empty string = no auth |
 | `HONCHO_LITE_JUDGE_FALLBACK_URL` | — | tried when the primary judge fails |
 | `HONCHO_LITE_SEARCH_JUDGE` / `_EXPAND` / `_CANDIDATE_CAP` | on / on / 40 | two-stage search knobs |
 | `HONCHO_LITE_EMBED_PROVIDER` | `none` | `none` \| `local` (sidecar) \| `api` — enables the embedding arm |
-| `HONCHO_LITE_EMBED_URL` / `_DIM` / `_TIMEOUT_MS` | — / — / 5000 | `/embed` endpoint settings |
+| `HONCHO_LITE_EMBED_URL` / `_DIM` / `_TIMEOUT_MS` | `http://127.0.0.1:8793/embed` / `384` / 5000 | `/embed` endpoint settings |
+| `HONCHO_LITE_EMBED_API_BASE` / `_API_MODEL` / `_API_KEY_ENV` | — / `text-embedding-3-small` / `HONCHO_LITE_EMBED_API_KEY` | provider=`api`: base URL / model / key-env name |
 | `HONCHO_LITE_FUSE` | `0` | `1` = RRF fusion of the FTS + embedding arms |
 | `HONCHO_LITE_TRANSLATE_PROVIDER` | `none` | `none` \| `local` — JA→EN query translation before embedding |
-| `HONCHO_LITE_TRANSLATE_URL` / `_TIMEOUT_MS` | — / 2500 | translation-stage settings |
-| `HONCHO_LITE_QUERY_DEADLINE_MS` | 10000 | overall deadline for one ranked search |
+| `HONCHO_LITE_TRANSLATE_URL` / `_TIMEOUT_MS` | `http://127.0.0.1:8793/translate` / 2500 | translation-stage settings |
+| `HONCHO_LITE_QUERY_DEADLINE_MS` | 15000 | overall deadline for one ranked search |
 | `HONCHO_LITE_DERIVE_*` | see `server/README.md` | derive pipeline knobs |
 | `HONCHO_LITE_*_TIMEOUT_MS` (LLM / judge / search) | 90000 / 20000 / 15000 | call timeouts |
 | `HONCHO_LITE_MAX_BODY_BYTES` | 4194304 (4 MiB) | request-body cap |

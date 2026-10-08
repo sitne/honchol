@@ -1,11 +1,14 @@
 [Unit]
 Description=honchol judge sidecar (optional local ONNX relevance judge on /judge)
 After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/honchol/sidecar
 Environment=SIDECAR_JUDGE_PORT=8795
+Environment=PYTHONUNBUFFERED=1
 # Expects a locally exported ONNX model + tokenizer
 # (SIDECAR_MBJA_DIR / SIDECAR_MBJA_ONNX; defaults under ~/models).
 ExecStart=/opt/honchol/venv/bin/python /opt/honchol/sidecar/mbja_judge_server.py
@@ -13,6 +16,14 @@ Restart=always
 RestartSec=2
 MemoryMax=4G
 NoNewPrivileges=true
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
 
 [Install]
 WantedBy=multi-user.target

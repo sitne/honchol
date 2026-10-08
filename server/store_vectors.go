@@ -43,6 +43,14 @@ func (s *Store) VectorCount(itemType string) (int64, error) {
 	return n, err
 }
 
+// VectorsAgg — item_type の (件数, max rowid)。全件キャッシュの無効化キー用
+// （件数だけでは「件数不変の再埋め込み」を検知できない — レビュー指摘）。
+func (s *Store) VectorsAgg(itemType string) (int64, int64, error) {
+	var n, mx int64
+	err := s.db.QueryRow(`SELECT COUNT(*), COALESCE(MAX(rowid),0) FROM vectors WHERE item_type=?`, itemType).Scan(&n, &mx)
+	return n, mx, err
+}
+
 // ConclusionsMissingVectors — ベクトル未計算の結論（rowid 順・limit 件）。
 func (s *Store) ConclusionsMissingVectors(limit int) ([]conclusionRow, error) {
 	rows, err := s.db.Query(`SELECT `+conclCols+` FROM conclusions c

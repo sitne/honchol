@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -82,7 +83,10 @@ func envOr(key, def string) string {
 func envIntOr(key string, def int) int {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
-			return n
+			if n > 0 {
+				return n
+			}
+			log.Printf("embed: %s=%d is invalid (must be > 0) — using default %d", key, n, def)
 		}
 	}
 	return def
@@ -246,6 +250,10 @@ func (p *EmbeddingProvider) finalize(texts []string, vecs [][]float32) ([][]floa
 func embedMissingConclusions(ctx context.Context, st *Store, p *EmbeddingProvider, batch, limit int, logf func(string, ...any)) (int, error) {
 	if batch <= 0 {
 		batch = 128
+	}
+	if batch > 512 {
+		// sidecar の受付上限（MAX_TEXTS、既定512）に合わせる（空振りリトライの防止 — レビュー指摘）
+		batch = 512
 	}
 	done := 0
 	start := time.Now()

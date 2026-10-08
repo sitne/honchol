@@ -1,7 +1,7 @@
 # honchol model sidecar (embedding arm + translation stage)
 # CPU ONNX Runtime stack — no CUDA, no torch required.
 # Tested with onnxruntime 1.30 / transformers 5.18 / numpy 2.x.
-onnxruntime>=1.17
-transformers>=4.45
-numpy>=1.26
-huggingface_hub>=0.23
+onnxruntime>=1.17,<2
+transformers>=4.45,<6
+numpy>=1.26,<3
+huggingface_hub>=0.23,<2

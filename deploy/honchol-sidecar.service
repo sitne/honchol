@@ -1,11 +1,14 @@
 [Unit]
 Description=honchol model sidecar (bekko embedding + LFM2 translation, loopback HTTP)
 After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/honchol/sidecar
 Environment=SIDECAR_PORT=8793
+Environment=PYTHONUNBUFFERED=1
 # Model locations (defaults under ~/models): fetch the LFM2 translation model with
 #   python3 /opt/honchol/sidecar/download_lfm2.py
 # bekko is auto-downloaded to the HF cache on first start (pinned revision).
@@ -16,6 +19,14 @@ RestartSec=2
 # Two resident ONNX models (≈2 GB RSS); headroom for batch transients.
 MemoryMax=6G
 NoNewPrivileges=true
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
 
 [Install]
 WantedBy=multi-user.target

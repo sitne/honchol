@@ -41,9 +41,9 @@ jobs:
       - name: Start server
         working-directory: server
         run: |
-          nohup ./honchol serve -addr 127.0.0.1:8793 -db /tmp/smoke.db >/tmp/serve.log 2>&1 &
+          nohup ./honchol serve -addr 127.0.0.1:8794 -db /tmp/smoke.db >/tmp/serve.log 2>&1 &
           for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8793/health >/dev/null; then
+            if curl -sf http://127.0.0.1:8794/health >/dev/null; then
               echo "server ready"; exit 0
             fi
             sleep 0.5
@@ -52,4 +52,4 @@ jobs:
       - name: SDK smoke test
         run: |
           python -m pip install --quiet honcho-ai
-          cd server && python smoke_sdk.py http://127.0.0.1:8793
+          cd server && python smoke_sdk.py http://127.0.0.1:8794

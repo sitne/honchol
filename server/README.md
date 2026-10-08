@@ -90,14 +90,18 @@ Check both primary and fallback with:
 ## Hybrid retrieval (v0.3)
 
     HONCHO_LITE_EMBED_PROVIDER    none (default) | local (sidecar) | api (OpenAI-compatible /embeddings)
-    HONCHO_LITE_EMBED_URL         e.g. http://127.0.0.1:8793/embed (local) or https://<api>/embeddings (api)
-    HONCHO_LITE_EMBED_DIM         required for provider=api (local takes the sidecar-reported dim)
+    HONCHO_LITE_EMBED_URL         default http://127.0.0.1:8793/embed
+    HONCHO_LITE_EMBED_DIM         default 384; set explicitly for provider=api to match the model
     HONCHO_LITE_EMBED_TIMEOUT_MS  5000
+    HONCHO_LITE_EMBED_API_BASE    provider=api: base URL, e.g. https://api.openai.com/v1
+    HONCHO_LITE_EMBED_API_MODEL   provider=api: model id (default text-embedding-3-small)
+    HONCHO_LITE_EMBED_API_KEY_ENV provider=api: env var name holding the key (default HONCHO_LITE_EMBED_API_KEY)
     HONCHO_LITE_FUSE              1 enables RRF fusion of the FTS + embedding arms (default 0)
     HONCHO_LITE_TRANSLATE_PROVIDER none (default) | local — JA→EN query translation before the embedding arm
     HONCHO_LITE_TRANSLATE_URL     http://127.0.0.1:8793/translate (default)
     HONCHO_LITE_TRANSLATE_TIMEOUT_MS 2500
-    HONCHO_LITE_QUERY_DEADLINE_MS 10000 (overall deadline for one ranked search)
+    HONCHO_LITE_QUERY_DEADLINE_MS 15000 (overall deadline for one ranked search; the translate→embed→judge
+                                  sequence must fit inside it — raise it if you run cold sidecars)
 
 Backfill vectors for existing rows (resumable, single-flight):
 
@@ -105,6 +109,10 @@ Backfill vectors for existing rows (resumable, single-flight):
 
 The embedding tier is served by `../sidecar/model_sidecar.py` (bekko ONNX embeddings + LFM2-350M
 translation). Everything is fail-open: no sidecar, or `EMBED_PROVIDER=none` → literal tier only.
+
+Advanced knobs: `HONCHO_LITE_FUSE_ARM_N` / `_FUSE_TOP_N` (per-arm depth 200 / fused top 30),
+`HONCHO_LITE_TRANSLATE_MAXLEN` (400), `HONCHO_LITE_MBJA_T_REL` / `_T_WEAK` (0.5 / 0.1),
+`HONCHO_LITE_JUDGE_FALLBACK_TIMEOUT_MS`, `HONCHO_LITE_QUERY_DEADLINE_MS` (above).
 
 ## Derive pipeline
 

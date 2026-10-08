@@ -6,11 +6,12 @@
 //	              応答は {"success":true,"result":{"answers":{...},"model":...}} の封筒付き。
 //	kind=sysone : local judgment shim — plain {"answers":{...}} response, no auth (label is historical).
 //	               Example: a small local model served at http://127.0.0.1:8799/v1/systemone
+//	kind=mbja   : experimental local ONNX relevance scorer ({query,texts} → {scores}); optional sidecar.
 //
 // 環境変数（秘密は「変数名」だけを指定する流儀）:
 //
 //	HONCHO_LITE_JUDGE_URL          必須。例: https://api.cloudflare.com/client/v4/accounts/<acct>/ai/run/@cf/cloudflare/clef-flash
-//	HONCHO_LITE_JUDGE_KIND         既定 "clef"（"sysone" も可）
+//	HONCHO_LITE_JUDGE_KIND         既定 "clef"（"sysone" / "mbja"(実験) も可）
 //	HONCHO_LITE_JUDGE_MODEL        既定 "clef-flash"（kind=clef のときのみ送信）
 //	HONCHO_LITE_JUDGE_KEY_ENV      既定 "CLOUDFLARE_API_TOKEN"（kind=clef）。空文字で認証なし
 //	HONCHO_LITE_JUDGE_TIMEOUT_MS   既定 20000
@@ -36,7 +37,7 @@ import (
 // ---- config ----
 
 type JudgeConfig struct {
-	Kind     string // "clef" | "sysone"
+	Kind     string // "clef" | "sysone" | "mbja" (experimental)
 	URL      string
 	Model    string // clef のみ送信。空なら送らない
 	KeyEnv   string // 環境変数の「名前」。値はここに保持しない

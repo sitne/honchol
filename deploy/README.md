@@ -90,7 +90,9 @@ first sidecar start (pinned revision).
   bind is refused unless `HONCHO_LITE_ALLOW_NON_LOOPBACK=1` is set explicitly.
   (An empty host like `:8792` counts as non-loopback.)
 - The model sidecars are loopback-only as well (no auth; they guard Host/Origin and cap
-  request sizes/concurrency).
+  request sizes/concurrency). The units run as root with NoNewPrivileges + ProtectSystem=full
+  + PrivateTmp and a crash-loop burst limit; for stronger isolation run them under a dedicated
+  user (`User=`) with prefetched models under /opt/honchol/models.
 - Keep `/etc/honchol/env` readable only by root (the installer creates it as 0600).
 - Backups live on the same disk (single-disk); no external alerting built in — point any
   watchdog at `/health` (`status != "ok"`) and sidecar reachability, or watch the journal.

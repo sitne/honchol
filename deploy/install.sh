@@ -31,15 +31,17 @@ chmod 700 "$INSTALL_DIR/data"
 ( cd "$INSTALL_DIR/server" && go build -o honchol . )
 
 # 3b) python venv for the model sidecar (embedding arm; best effort)
+SIDECAR_OK=0
 if command -v python3 >/dev/null; then
   if [ ! -x "$INSTALL_DIR/venv/bin/python" ]; then
     python3 -m venv "$INSTALL_DIR/venv" \
       || echo "warn: venv creation failed — the sidecar (embedding arm) won't start" >&2
   fi
-  if [ -x "$INSTALL_DIR/venv/bin/pip" ]; then
-    "$INSTALL_DIR/venv/bin/pip" install --quiet --disable-pip-version-check \
-      -r "$INSTALL_DIR/sidecar/requirements.txt" \
-      || echo "warn: pip install failed — install sidecar/requirements.txt manually" >&2
+  if [ -x "$INSTALL_DIR/venv/bin/pip" ] \
+     && "$INSTALL_DIR/venv/bin/pip" install --quiet --disable-pip-version-check -r "$INSTALL_DIR/sidecar/requirements.txt"; then
+    SIDECAR_OK=1
+  else
+    echo "warn: pip install failed — install sidecar/requirements.txt manually" >&2
   fi
 else
   echo "warn: python3 not found — the sidecar (embedding arm) won't start" >&2
@@ -70,7 +72,12 @@ install -m 644 "$D/honchol-backup.service" /etc/systemd/system/
 install -m 644 "$D/honchol-backup.timer" /etc/systemd/system/
 install -m 644 "$D/honchol-judge.service" /etc/systemd/system/   # optional; not enabled by default
 systemctl daemon-reload
-systemctl enable honchol-serve.service honchol-sidecar.service honchol-derive.timer honchol-backup.timer
+systemctl enable honchol-serve.service honchol-derive.timer honchol-backup.timer
+if [ "${SIDECAR_OK:-0}" = "1" ]; then
+  systemctl enable honchol-sidecar.service
+else
+  echo "warn: sidecar left disabled (venv/pip incomplete) — fix deps, then: systemctl enable --now honchol-sidecar" >&2
+fi
 
 echo
 echo "installed. next steps:"
